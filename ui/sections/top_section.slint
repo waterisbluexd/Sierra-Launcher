@@ -73,11 +73,11 @@ export component TopSection inherits Rectangle {
     }
 
     VerticalLayout {
-        y: 8px;
-        padding-top: 10px;
-        padding-bottom: 18px;
+        y: 0px;
+        padding-top: 25px;
         width: parent.width;
-        spacing: 4px;
+        spacing: 0px;
+        padding-bottom: -20px;
 
         opacity: carousel.selection-mode ? 0 : 1;
 
@@ -88,9 +88,10 @@ export component TopSection inherits Rectangle {
 
         HorizontalLayout {
             alignment: start;
-            padding-top: 30px;
+            padding-top: 15px;
             spacing: 60px;
-            padding-left: 24px;
+            padding-left: 25px;
+            padding-bottom: -20px;
 
             Clock {
                 time: root.current-time;
@@ -111,13 +112,9 @@ export component TopSection inherits Rectangle {
             }
         }
 
-        Rectangle {
-            height: 90px;
-        }
-
-        SearchBar {
-            x: 0px;
-            width: parent.width;
+        HorizontalLayout {
+            padding-left: 20px;
+            padding-right: 20px;
 
             search-bar := SearchBar {
                 edited(t) => {

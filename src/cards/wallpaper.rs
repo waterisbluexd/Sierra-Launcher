@@ -89,9 +89,7 @@ pub struct WallpaperManager {
 }
 
 impl WallpaperManager {
-    pub fn load(
-        on_current_ready: impl Fn() + Send + Sync + 'static,
-    ) -> Self {
+    pub fn load(on_current_ready: impl Fn() + Send + Sync + 'static) -> Self {
         let mut paths = wallpapers_dir_all_images().unwrap_or_default();
 
         let current = current_wallpaper_path();
@@ -312,8 +310,8 @@ fn process_blur_raw(path: &Path) -> Option<(Vec<u8>, u32, u32)> {
     let img = image::open(path).ok()?;
     let small = img.resize_to_fill(200, 110, image::imageops::FilterType::Triangle);
     let mut blurred = small.blur(4.0).into_rgba8();
-    boost_saturation(&mut blurred, 1.1);
-    darken_image(&mut blurred, 0.84);
+    boost_saturation(&mut blurred, 1.10);
+    //darken_image(&mut blurred, 0.84);
     let w = blurred.width();
     let h = blurred.height();
     Some((blurred.into_raw(), w, h))
@@ -414,7 +412,8 @@ fn current_wallpaper_path() -> Option<PathBuf> {
     }
     if let Some(home) = env::var_os("HOME") {
         let candidate_dir = PathBuf::from(home).join("Wallpaper");
-        if candidate_dir.exists() && candidate_dir.is_dir()
+        if candidate_dir.exists()
+            && candidate_dir.is_dir()
             && let Some(p) = first_image_in_dir(&candidate_dir)
         {
             return Some(p);
