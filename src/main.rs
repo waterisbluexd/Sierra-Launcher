@@ -3,6 +3,8 @@ mod ipc;
 mod theme;
 mod themer;
 mod ui;
+
+use cards::appgrid::{AppGrid, push_apps_state};
 use cards::wallpaper::WallpaperManager;
 use layer_shika::calloop::channel::{self, Event};
 use layer_shika::calloop::{TimeoutAction, Timer};
@@ -13,8 +15,8 @@ use slint::ComponentHandle;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -32,11 +34,15 @@ pub enum DaemonMsg {
 
 fn main() -> layer_shika::Result<()> {
     let socket_path = ipc::socket_path();
+
     if ipc::notify_running_instance(&socket_path) {
         return Ok(());
     }
+
     let listener = ipc::bind_listener(&socket_path).expect("Failed to bind IPC socket");
+
     let ui = ui::find_ui_file();
+
     let mut shell = Shell::from_file(ui.to_str().unwrap())
         .surface(ISLAND)
         .width(SHOWN_WIDTH)
@@ -51,6 +57,7 @@ fn main() -> layer_shika::Result<()> {
 
     let manager = Rc::new(RefCell::new(WallpaperManager::load({
         let sender = sender.clone();
+
         move || {
             let _ = sender.send(DaemonMsg::WallpaperLoaded);
         }
@@ -59,12 +66,16 @@ fn main() -> layer_shika::Result<()> {
     let commit_gen = Arc::new(AtomicU64::new(0));
     let weather_state = Arc::new(Mutex::new(cards::weather::WeatherState::default()));
 
-    let weather_loaded_from_cache = cards::weather::load_weather_from_cache().map(|cached| {
-        let mut state = weather_state.lock().unwrap();
-        *state = cached;
-        eprintln!("[weather] initialized from cache");
-        true
-    }).unwrap_or(false);
+    let app_grid = Rc::new(AppGrid::load());
+
+    let weather_loaded_from_cache = cards::weather::load_weather_from_cache()
+        .map(|cached| {
+            let mut state = weather_state.lock().unwrap();
+            *state = cached;
+            eprintln!("[weather] initialized from cache");
+            true
+        })
+        .unwrap_or(false);
 
     {
         shell
@@ -73,48 +84,65 @@ fn main() -> layer_shika::Result<()> {
                 let manager_for_channel = manager.clone();
                 let commit_gen_for_channel = commit_gen.clone();
                 let weather_state_for_channel = weather_state.clone();
+
                 move |event, _, app_state: &mut AppState| {
                     let msg = match event {
                         Event::Msg(m) => m,
                         Event::Closed => return,
                     };
+
                     match msg {
                         DaemonMsg::ReloadTheme => {
                             let theme = theme::Theme::load();
+
                             for surface in app_state.surfaces_by_name_mut(ISLAND) {
                                 themer::notify::apply_theme(surface.component_instance(), &theme);
                             }
+
                             for surface in app_state.all_outputs() {
                                 let _ = surface.render_frame_if_dirty();
                                 surface.commit_surface();
                             }
                         }
-                        DaemonMsg::Toggle => std::process::exit(0),
+
+                        DaemonMsg::Toggle => {
+                            std::process::exit(0);
+                        }
+
                         DaemonMsg::WallpaperLoaded => {
                             let mgr = manager_for_channel.borrow();
+
                             for surface in app_state.surfaces_by_name_mut(ISLAND) {
                                 ui::push_wallpaper_state(surface.component_instance(), &mgr);
                             }
+
                             for surface in app_state.all_outputs() {
                                 let _ = surface.render_frame_if_dirty();
                                 surface.commit_surface();
                             }
                         }
+
                         DaemonMsg::CommitWallpaper(gen_id) => {
                             if commit_gen_for_channel.load(Ordering::SeqCst) == gen_id {
                                 manager_for_channel.borrow().set_current_as_wallpaper();
                             }
                         }
+
                         DaemonMsg::WeatherUpdate => {
                             let state = weather_state_for_channel.lock().unwrap();
+
                             for surface in app_state.surfaces_by_name_mut(ISLAND) {
                                 let instance = surface.component_instance();
+
                                 for (name, val) in [
                                     ("is-rainy", Value::Bool(state.is_rainy)),
                                     ("is-cloudy", Value::Bool(state.is_cloudy)),
                                     ("is-clear", Value::Bool(state.is_clear)),
                                     ("is-day", Value::Bool(state.is_day)),
-                                    ("temperature", Value::String(format!("{:.0}°", state.temperature).into())), //C or F ? dont want it now
+                                    (
+                                        "temperature",
+                                        Value::String(format!("{:.0}°", state.temperature).into()),
+                                    ),
                                     ("condition", Value::String(state.condition.clone().into())),
                                 ] {
                                     if let Err(e) = instance.set_property(name, val) {
@@ -122,6 +150,7 @@ fn main() -> layer_shika::Result<()> {
                                     }
                                 }
                             }
+
                             for surface in app_state.all_outputs() {
                                 let _ = surface.render_frame_if_dirty();
                                 surface.commit_surface();
@@ -138,22 +167,30 @@ fn main() -> layer_shika::Result<()> {
         .insert_source(
             Timer::from_duration(Duration::from_millis(1000)),
             move |_deadline, _metadata, app_state: &mut AppState| {
-            let time_str = cards::clock::current_time();
-            let date_str = cards::clock::current_date();
-            let greeting_str = cards::clock::user_greeting();
-            for surface in app_state.surfaces_by_name_mut(ISLAND) {
-                let instance = surface.component_instance();
-                let _ = instance
-                    .set_property("current-time", Value::String(time_str.clone().into()));
-                let _ = instance
-                    .set_property("current-date", Value::String(date_str.clone().into()));
-                let _ = instance
-                    .set_property("current-greeting", Value::String(greeting_str.clone().into()));
-            }
-            for surface in app_state.all_outputs() {
-                let _ = surface.render_frame_if_dirty();
-                surface.commit_surface();
-            }
+                let time_str = cards::clock::current_time();
+                let date_str = cards::clock::current_date();
+                let greeting_str = cards::clock::user_greeting();
+
+                for surface in app_state.surfaces_by_name_mut(ISLAND) {
+                    let instance = surface.component_instance();
+
+                    let _ = instance
+                        .set_property("current-time", Value::String(time_str.clone().into()));
+
+                    let _ = instance
+                        .set_property("current-date", Value::String(date_str.clone().into()));
+
+                    let _ = instance.set_property(
+                        "current-greeting",
+                        Value::String(greeting_str.clone().into()),
+                    );
+                }
+
+                for surface in app_state.all_outputs() {
+                    let _ = surface.render_frame_if_dirty();
+                    surface.commit_surface();
+                }
+
                 TimeoutAction::ToDuration(Duration::from_millis(1000))
             },
         )
@@ -169,15 +206,18 @@ fn main() -> layer_shika::Result<()> {
     {
         let sender = sender.clone();
         let manager_preload = manager.clone();
+
         shell
             .event_loop_handle()
             .insert_source(
                 Timer::from_duration(Duration::from_millis(150)),
                 move |_deadline, _metadata, _app_state: &mut AppState| {
                     let sender_inner = sender.clone();
+
                     manager_preload.borrow().spawn_full_preload(move || {
                         let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
                     });
+
                     TimeoutAction::Drop
                 },
             )
@@ -189,41 +229,61 @@ fn main() -> layer_shika::Result<()> {
         let manager_init = manager.clone();
         let commit_gen_inner = commit_gen.clone();
         let weather_state_init = weather_state.clone();
+        let app_grid_init = app_grid.clone();
+
         shell.with_component(ISLAND, move |instance| {
             themer::notify::apply_theme(instance, &theme);
 
             ui::push_wallpaper_state(instance, &manager_init.borrow());
 
-            let _ = instance.set_property(
-                "current-time",
-                Value::String(time_str.clone().into()),
-            );
-            let _ = instance.set_property(
-                "current-date",
-                Value::String(date_str.clone().into()),
-            );
+            push_apps_state(instance, &app_grid);
+
+            cards::appgrid::push_apps_state(instance, &app_grid_init);
+
+            let _ = instance.set_property("current-time", Value::String(time_str.clone().into()));
+
+            let _ = instance.set_property("current-date", Value::String(date_str.clone().into()));
+
             let _ = instance.set_property(
                 "current-greeting",
                 Value::String(greeting_str.clone().into()),
             );
 
             let init_state = weather_state_init.lock().unwrap();
+
             let _ = instance.set_property("is-rainy", Value::Bool(init_state.is_rainy));
+
             let _ = instance.set_property("is-cloudy", Value::Bool(init_state.is_cloudy));
+
             let _ = instance.set_property("is-clear", Value::Bool(init_state.is_clear));
+
             let _ = instance.set_property("is-day", Value::Bool(init_state.is_day));
+
             let _ = instance.set_property(
                 "temperature",
                 Value::String(format!("{:.0}°", init_state.temperature).into()),
             );
+
             let _ = instance.set_property(
                 "condition",
                 Value::String(init_state.condition.clone().into()),
             );
+
             drop(init_state);
+
+            let app_grid_launch = app_grid_init.clone();
+
+            let _ = instance.set_callback("launch-app", move |args: &[Value]| {
+                if let Some(Value::String(name)) = args.first() {
+                    app_grid_launch.launch(name);
+                }
+
+                Value::Void
+            });
 
             {
                 let sender_inner = esc_sender.clone();
+
                 ui::kick_loads(&manager_init, move || {
                     let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
                 });
@@ -233,18 +293,24 @@ fn main() -> layer_shika::Result<()> {
             let manager_prev = manager_init.clone();
             let sender_prev = esc_sender.clone();
             let commit_gen_prev = commit_gen_inner.clone();
+
             let _ = instance.set_callback("request_select_prev", move |_args: &[Value]| {
                 manager_prev.borrow_mut().select_prev();
+
                 if let Some(inst) = weak_prev.upgrade() {
                     ui::push_wallpaper_state(&inst, &manager_prev.borrow());
                 }
+
                 {
                     let sender_inner = sender_prev.clone();
+
                     ui::kick_loads(&manager_prev, move || {
                         let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
                     });
                 }
+
                 ui::schedule_commit(&commit_gen_prev, &sender_prev);
+
                 Value::Void
             });
 
@@ -252,32 +318,35 @@ fn main() -> layer_shika::Result<()> {
             let manager_next = manager_init.clone();
             let sender_next = esc_sender.clone();
             let commit_gen_next = commit_gen_inner.clone();
+
             let _ = instance.set_callback("request_select_next", move |_args: &[Value]| {
                 manager_next.borrow_mut().select_next();
+
                 if let Some(inst) = weak_next.upgrade() {
                     ui::push_wallpaper_state(&inst, &manager_next.borrow());
                 }
+
                 {
                     let sender_inner = sender_next.clone();
+
                     ui::kick_loads(&manager_next, move || {
                         let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
                     });
                 }
+
                 ui::schedule_commit(&commit_gen_next, &sender_next);
+
                 Value::Void
             });
 
             let inner_sender = esc_sender.clone();
+
             let _ = instance.set_callback("request_hide", move |_args: &[Value]| {
                 let _ = inner_sender.send(DaemonMsg::Toggle);
                 Value::Void
             });
 
-            cards::searchbar::wire_search_callbacks(
-                instance,
-                |_text| {},
-                |_text| {},
-            );
+            cards::searchbar::wire_search_callbacks(instance, |_text| {}, |_text| {});
         });
     }
 
@@ -290,10 +359,12 @@ fn main() -> layer_shika::Result<()> {
                     for surface in app_state.surfaces_by_name_mut(ISLAND) {
                         let _ = surface.component_instance().invoke("focus_search", &[]);
                     }
+
                     for surface in app_state.all_outputs() {
                         let _ = surface.render_frame_if_dirty();
                         surface.commit_surface();
                     }
+
                     TimeoutAction::Drop
                 },
             )
@@ -304,25 +375,33 @@ fn main() -> layer_shika::Result<()> {
         let sender = sender.clone();
         let weather_state = weather_state.clone();
         let skip_initial_fetch = weather_loaded_from_cache;
+
         thread::spawn(move || {
             if !skip_initial_fetch {
                 cards::weather::update_weather(&mut weather_state.lock().unwrap());
+
                 let _ = sender.send(DaemonMsg::WeatherUpdate);
             }
+
             loop {
                 thread::sleep(Duration::from_secs(600));
+
                 cards::weather::update_weather(&mut weather_state.lock().unwrap());
+
                 let _ = sender.send(DaemonMsg::WeatherUpdate);
             }
         });
     }
 
     let sender_ipc = sender.clone();
+
     thread::spawn(move || {
         ipc::serve(listener, move || {
             let _ = sender_ipc.send(DaemonMsg::Toggle);
         });
     });
+
     shell.run()?;
+
     Ok(())
 }

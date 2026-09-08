@@ -8,7 +8,6 @@ import { AppGrid, AppEntry } from "../cards/appgrid.slint";
 export component TopSection inherits Rectangle {
     height: 630px;
     border-width: 0px;
-    border-color: transparent;
     background: transparent;
     clip: true;
 
@@ -37,13 +36,13 @@ export component TopSection inherits Rectangle {
     in property <string> temperature: "";
     in property <string> condition: "";
 
+    in property <[AppEntry]> apps: [];
+
     callback select-prev();
     callback select-next();
     callback search-edited(string);
     callback search-accepted(string);
     callback focus-search();
-
-    in property <[AppEntry]> apps: [];
     callback launch-app(string);
     callback show-all-apps();
 
@@ -79,10 +78,10 @@ export component TopSection inherits Rectangle {
 
     VerticalLayout {
         y: 0px;
-        padding-top: 25px;
         width: parent.width;
-        spacing: 0px;
+        padding-top: 25px;
         padding-bottom: -20px;
+        spacing: 0px;
 
         opacity: carousel.selection-mode ? 0 : 1;
 
@@ -92,11 +91,12 @@ export component TopSection inherits Rectangle {
         }
 
         HorizontalLayout {
+            width: parent.width;
             alignment: start;
-            padding-top: 15px;
-            spacing: 60px;
             padding-left: 25px;
+            padding-top: 15px;
             padding-bottom: -20px;
+            spacing: 60px;
 
             Clock {
                 time: root.current-time;
@@ -108,16 +108,19 @@ export component TopSection inherits Rectangle {
             Weather {
                 icon-size: 100px;
                 y: 100px;
+
                 is-rainy: root.is-rainy;
                 is-cloudy: root.is-cloudy;
                 is-clear: root.is-clear;
                 is-day: root.is-day;
+
                 temperature: root.temperature;
                 condition: root.condition;
             }
         }
 
         HorizontalLayout {
+            width: parent.width;
             padding-left: 20px;
             padding-right: 20px;
 
@@ -133,19 +136,24 @@ export component TopSection inherits Rectangle {
         }
 
         VerticalLayout {
+            width: parent.width;
             padding-left: 20px;
             padding-right: 20px;
-            padding-top: 5px;
+            padding-top: 10px;
+            spacing: 0px;
 
-            // Rectangle {
-            //     border-width: 2px;
-            //     border-color: Theme.color7.with-alpha(0.65);
-            // }
             AppGrid {
-                    apps: root.apps;
-                    launch(name) => { root.launch-app(name); }
-                    show-all() => { root.show-all-apps(); }
+                width: parent.width;
+                apps: root.apps;
+
+                launch(name) => {
+                    root.launch-app(name);
                 }
+
+                show-all() => {
+                    root.show-all-apps();
+                }
+            }
         }
     }
 }

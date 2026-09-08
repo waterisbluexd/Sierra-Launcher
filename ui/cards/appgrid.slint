@@ -8,109 +8,127 @@ export struct AppEntry {
 }
 
 export component AppGrid inherits Rectangle {
-    in property <[AppEntry]> apps: [
-        { name: "Web", initial: "W" }, { name: "Settings", initial: "S" }, { name: "Mail", initial: "M" },
-        { name: "Photos", initial: "P" }, { name: "Calc", initial: "C" }, { name: "Files", initial: "F" },
-        { name: "Games", initial: "G" }, { name: "Messages", initial: "M" }, { name: "Calendar", initial: "C" },
-    ];
+    in property <[AppEntry]> apps: [];
     in property <int> columns: 5;
-    in property <string> section-title: "Applications";
-    in property <bool> show-all-apps-link: true;
-
-    property <length> cell-w: 74px;
-    property <length> cell-h: 92px;
-    property <int> row-count: root.apps.length == 0 ? 0 : (root.apps.length + root.columns - 1) / root.columns;
 
     callback launch(string);
     callback show-all();
 
+    property <length> tile-width: 68px;
+    property <length> tile-height: 78px;
+    property <length> gap: 8px;
+    property <length> header-height: 22px;
+
+    property <int> rows:
+        root.apps.length == 0
+            ? 0
+            : (root.apps.length + root.columns - 1) / root.columns;
+
+    width: 100%;
+    height: root.header-height
+        + root.rows * root.tile-height
+        + max(0, root.rows - 1) * root.gap
+        + 12px;
+
     background: transparent;
 
-    VerticalLayout {
-        spacing: 14px;
-        alignment: start;
+    Text {
+        width: parent.width;
+        height: parent.height;
+        text: "Applications";
+        font-family: "Monocraft";
+        color: Theme.color7.with-alpha(1.0);
+        font-size: 13px;
+        horizontal-alignment: left;
+        vertical-alignment: center;
+    }
 
-        // header: "Applications" ..... "All apps ->"
-        HorizontalLayout {
-            alignment: space-between;
+    TouchArea {
+        x: parent.width - 75px;
+        y: 0px;
+        width: 75px;
+        height: root.header-height;
 
-            Text {
-                text: root.section-title;
-                color: Theme.color4;
-                font-size: 15px;
-                font-weight: 600;
+        clicked => {
+            root.show-all();
+        }
+
+        Text {
+            width: parent.width;
+            height: parent.height;
+            text: "All apps →";
+            font-family: "Monocraft";
+            color: Theme.color7.with-alpha(0.65);
+            font-size: 13px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+    }
+
+    for app[index] in root.apps: Rectangle {
+        x: Math.mod(index, root.columns) * (root.tile-width + root.gap);
+        y: root.header-height
+            + (index / root.columns) * (root.tile-height + root.gap);
+
+        width: root.tile-width;
+        height: root.tile-height;
+
+        background: tile-touch.has-hover
+            ? Theme.color4.with-alpha(0.14)
+            : Theme.color4.with-alpha(0.07);
+
+        border-width: 1px;
+
+        border-color: tile-touch.has-hover
+            ? Theme.color7.with-alpha(0.32)
+            : Theme.color7.with-alpha(0.12);
+
+        Rectangle {
+            width: parent.width;
+            height: parent.height;
+            background: transparent;
+
+            tile-touch := TouchArea {
+                clicked => {
+                    root.launch(app.name);
+                }
             }
 
-            if root.show-all-apps-link: all-apps-touch := TouchArea {
-                clicked => { root.show-all(); }
+            VerticalLayout {
+                spacing: 3px;
 
-                HorizontalLayout {
-                    spacing: 4px;
-                    Text {
-                        text: "All apps";
-                        color: Theme.color7.with-alpha(all-apps-touch.has-hover ? 1.0 : 0.75);
-                        font-size: 13px;
+                Rectangle {
+                    width: parent.width;
+                    height: 50px;
+                    background: transparent;
+
+                    if app.has-icon: Image {
+                        width: 38px;
+                        height: 38px;
+                        source: app.icon;
                     }
-                    Text {
-                        text: "\u{f061}";
-                        font-family: "Monocraft";
-                        color: Theme.color7.with-alpha(all-apps-touch.has-hover ? 1.0 : 0.75);
-                        font-size: 11px;
+
+                    if !app.has-icon: Text {
+                        width: parent.width;
+                        height: parent.height;
+                        text: app.initial;
+                        color: Theme.color4;
+                        font-size: 22px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
                         vertical-alignment: center;
                     }
                 }
-            }
-        }
 
-        for row-idx in root.row-count: HorizontalLayout {
-            spacing: 6px;
-            alignment: start;
-
-            for col-idx in root.columns: Rectangle {
-                width: root.cell-w;
-                height: root.cell-h;
-                property <int> flat-idx: row-idx * root.columns + col-idx;
-
-                if flat-idx < root.apps.length: entry-touch := TouchArea {
-                    clicked => { root.launch(root.apps[flat-idx].name); }
-
-                    VerticalLayout {
-                        spacing: 8px;
-                        alignment: center;
-
-                        Rectangle {
-                            width: 56px;
-                            height: 56px;
-                            border-radius: 14px;
-                            background: entry-touch.has-hover ? Theme.color4.with-alpha(0.18) : Theme.color4.with-alpha(0.10);
-                            border-width: 1px;
-                            border-color: Theme.color7.with-alpha(entry-touch.has-hover ? 0.35 : 0.15);
-                            animate background, border-color { duration: 120ms; easing: ease-out; }
-
-                            if root.apps[flat-idx].has-icon: Image {
-                                source: root.apps[flat-idx].icon;
-                                width: 30px;
-                                height: 30px;
-                            }
-                            if !root.apps[flat-idx].has-icon: Text {
-                                text: root.apps[flat-idx].initial;
-                                color: Theme.color4;
-                                font-size: 16px;
-                                font-weight: 600;
-                                horizontal-alignment: center;
-                                vertical-alignment: center;
-                            }
-                        }
-
-                        Text {
-                            text: root.apps[flat-idx].name;
-                            color: Theme.color4;
-                            font-size: 11px;
-                            horizontal-alignment: center;
-                            overflow: elide;
-                            width: root.cell-w;
-                        }
-                    }
+                Text {
+                    width: parent.width;
+                    height: 20px;
+                    text: app.name;
+                    color: Theme.color4;
+                    font-size: 10px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    overflow: elide;
                 }
             }
         }
