@@ -7,7 +7,8 @@ import { Weather } from "../cards/weather.slint";
 export component TopSection inherits Rectangle {
     height: 220px;
     border-width: 0px;
-    border-color: Theme.color4.with_alpha(0.7);
+    border-color: transparent;
+    background: transparent;
     clip: true;
 
     in property <image> wallpaper-image;
@@ -16,10 +17,13 @@ export component TopSection inherits Rectangle {
     in property <image> wallpaper-next-image;
     in property <image> wallpaper-prev-prev-image;
     in property <image> wallpaper-next-next-image;
+
     in property <int> wallpaper-current-index: 0;
     in property <int> wallpaper-total-count: 1;
+
     in property <bool> can-select-prev: true;
     in property <bool> can-select-next: true;
+
     in property <string> current-time: "00:00";
     in property <string> current-date: "01 Jan, Monday";
     in property <string> current-greeting: "Good evening, User!";
@@ -28,6 +32,7 @@ export component TopSection inherits Rectangle {
     in property <bool> is-cloudy: false;
     in property <bool> is-clear: false;
     in property <bool> is-day: true;
+
     in property <string> temperature: "";
     in property <string> condition: "";
 
@@ -37,58 +42,33 @@ export component TopSection inherits Rectangle {
     callback search-accepted(string);
     callback focus-search();
 
-    focus-search => { search-bar.focus(); }
+    focus-search => {
+        search-bar.focus();
+    }
 
     carousel := WallpaperCarousel {
         width: 100%;
         height: 100%;
+
         wallpaper-image: root.wallpaper-image;
         wallpaper-prev-image: root.wallpaper-prev-image;
         wallpaper-next-image: root.wallpaper-next-image;
         wallpaper-prev-prev-image: root.wallpaper-prev-prev-image;
         wallpaper-next-next-image: root.wallpaper-next-next-image;
         wallpaper-image-blurred: root.wallpaper-image-blurred;
+
         wallpaper-current-index: root.wallpaper-current-index;
         wallpaper-total-count: root.wallpaper-total-count;
+
         can-select-prev: root.can-select-prev;
         can-select-next: root.can-select-next;
-        select-prev => { root.select-prev(); }
-        select-next => { root.select-next(); }
-    }
 
-    Image {
-        source: root.wallpaper-image-blurred;
-        width: parent.width;
-        height: parent.height;
-        image-fit: cover;
-        opacity: carousel.selection-mode ? 0 : (root.wallpaper-image-blurred.width > 0 ? 1.0 : 0.0);
-        animate opacity {
-            duration: 200ms;
-            easing: ease-out;
+        select-prev => {
+            root.select-prev();
         }
-    }
 
-    Rectangle {
-        width: parent.width;
-        height: parent.height;
-        background: @linear-gradient(180deg,
-            transparent 0%,
-            transparent 45%,
-            rgba(0, 0, 0, 0.55) 80%,
-            black 100%);
-        opacity: carousel.selection-mode ? 0 : 1;
-        animate opacity {
-            duration: 200ms;
-            easing: ease-in-out;
-        }
-    }
-
-    Rectangle {
-        background: white.with_alpha(0.06);
-        opacity: carousel.selection-mode ? 0 : 1;
-        animate opacity {
-            duration: 200ms;
-            easing: ease-in-out;
+        select-next => {
+            root.select-next();
         }
     }
 
@@ -98,50 +78,56 @@ export component TopSection inherits Rectangle {
         padding-bottom: 18px;
         width: parent.width;
         spacing: 4px;
+
         opacity: carousel.selection-mode ? 0 : 1;
+
         animate opacity {
             duration: 200ms;
             easing: ease-in-out;
         }
 
-         HorizontalLayout {
-             alignment: start;
-             padding-top: 30px;
-             spacing: 60px;
-             padding-left: 24px;
-             Clock {
-                 time: root.current-time;
-                 date: root.current-date;
-                 greeting: root.current-greeting;
-                 time-font-size: 56px;
-             }
-               Weather {
-                    icon-size: 100px;
-                    y: 100px;
-                    is-rainy: root.is-rainy;
-                    is-cloudy: root.is-cloudy;
-                    is-clear: root.is-clear;
-                    is-day: root.is-day;
-                    temperature: root.temperature;
-                    condition: root.condition;
+        HorizontalLayout {
+            alignment: start;
+            padding-top: 30px;
+            spacing: 60px;
+            padding-left: 24px;
+
+            Clock {
+                time: root.current-time;
+                date: root.current-date;
+                greeting: root.current-greeting;
+                time-font-size: 56px;
+            }
+
+            Weather {
+                icon-size: 100px;
+                y: 100px;
+                is-rainy: root.is-rainy;
+                is-cloudy: root.is-cloudy;
+                is-clear: root.is-clear;
+                is-day: root.is-day;
+                temperature: root.temperature;
+                condition: root.condition;
+            }
+        }
+
+        Rectangle {
+            height: 90px;
+        }
+
+        SearchBar {
+            x: 0px;
+            width: parent.width;
+
+            search-bar := SearchBar {
+                edited(t) => {
+                    root.search-edited(t);
                 }
-         }
 
-         Rectangle {
-             height: 90px;
-         }
-
-         SearchBar {
-              x: 0px;
-              width: parent.width;
-              search-bar := SearchBar {
-                  edited(t) => {
-                      root.search-edited(t);
-                  }
-                  accepted(t) => {
-                      root.search-accepted(t);
-                  }
-              }
-          }
+                accepted(t) => {
+                    root.search-accepted(t);
+                }
+            }
+        }
     }
 }
