@@ -3,9 +3,10 @@ import { WallpaperCarousel } from "../cards/wallpaper.slint";
 import { SearchBar } from "../cards/searchbar.slint";
 import { Clock } from "../cards/clock.slint";
 import { Weather } from "../cards/weather.slint";
+import { AppGrid, AppEntry } from "../cards/appgrid.slint";
 
 export component TopSection inherits Rectangle {
-    height: 220px;
+    height: 630px;
     border-width: 0px;
     border-color: transparent;
     background: transparent;
@@ -41,6 +42,10 @@ export component TopSection inherits Rectangle {
     callback search-edited(string);
     callback search-accepted(string);
     callback focus-search();
+
+    in property <[AppEntry]> apps: [];
+    callback launch-app(string);
+    callback show-all-apps();
 
     focus-search => {
         search-bar.focus();
@@ -125,6 +130,22 @@ export component TopSection inherits Rectangle {
                     root.search-accepted(t);
                 }
             }
+        }
+
+        VerticalLayout {
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 5px;
+
+            // Rectangle {
+            //     border-width: 2px;
+            //     border-color: Theme.color7.with-alpha(0.65);
+            // }
+            AppGrid {
+                    apps: root.apps;
+                    launch(name) => { root.launch-app(name); }
+                    show-all() => { root.show-all-apps(); }
+                }
         }
     }
 }

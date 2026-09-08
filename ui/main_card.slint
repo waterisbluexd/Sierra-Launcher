@@ -154,23 +154,6 @@ export component Island inherits Window {
                             root.search_accepted(t);
                         }
                     }
-
-                    Rectangle {
-                        border-width: 0px;
-                        background: transparent;
-
-                        VerticalLayout {
-                            padding: 14px;
-
-                            AppGrid {
-                                apps: root.apps;
-
-                                launch(name) => {
-                                    root.launch-app(name);
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

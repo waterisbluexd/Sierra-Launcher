@@ -3,6 +3,8 @@ import { Theme } from "../theme.slint";
 export struct AppEntry {
     name: string,
     initial: string,
+    icon: image,
+    has-icon: bool,
 }
 
 export component AppGrid inherits Rectangle {
@@ -12,51 +14,102 @@ export component AppGrid inherits Rectangle {
         { name: "Games", initial: "G" }, { name: "Messages", initial: "M" }, { name: "Calendar", initial: "C" },
     ];
     in property <int> columns: 5;
+    in property <string> section-title: "Applications";
+    in property <bool> show-all-apps-link: true;
+
     property <length> cell-w: 74px;
-    property <length> cell-h: 84px;
-    property <int> row-count: (root.apps.length + root.columns - 1) / root.columns;
+    property <length> cell-h: 92px;
+    property <int> row-count: root.apps.length == 0 ? 0 : (root.apps.length + root.columns - 1) / root.columns;
 
     callback launch(string);
+    callback show-all();
 
     background: transparent;
 
     VerticalLayout {
-        spacing: 10px;
+        spacing: 14px;
         alignment: start;
+
+        // header: "Applications" ..... "All apps ->"
+        HorizontalLayout {
+            alignment: space-between;
+
+            Text {
+                text: root.section-title;
+                color: Theme.color4;
+                font-size: 15px;
+                font-weight: 600;
+            }
+
+            if root.show-all-apps-link: all-apps-touch := TouchArea {
+                clicked => { root.show-all(); }
+
+                HorizontalLayout {
+                    spacing: 4px;
+                    Text {
+                        text: "All apps";
+                        color: Theme.color7.with-alpha(all-apps-touch.has-hover ? 1.0 : 0.75);
+                        font-size: 13px;
+                    }
+                    Text {
+                        text: "\u{f061}";
+                        font-family: "Monocraft";
+                        color: Theme.color7.with-alpha(all-apps-touch.has-hover ? 1.0 : 0.75);
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
         for row-idx in root.row-count: HorizontalLayout {
             spacing: 6px;
             alignment: start;
+
             for col-idx in root.columns: Rectangle {
                 width: root.cell-w;
                 height: root.cell-h;
                 property <int> flat-idx: row-idx * root.columns + col-idx;
-                if flat-idx < root.apps.length: VerticalLayout {
-                    spacing: 6px;
-                    alignment: center;
-                    entry-touch := TouchArea {
-                        clicked => { root.launch(root.apps[flat-idx].name); }
-                    }
-                    Rectangle {
-                        width: 40px;
-                        height: 40px;
-                        border-radius: 10px;
-                        background: Theme.color4.with-alpha(0.15);
-                        border-width: 1px;
-                        border-color: Theme.color4.with-alpha(0.2);
-                        Text {
-                            text: root.apps[flat-idx].initial;
-                            color: Theme.color4;
-                            font-size: 14px;
-                            font-weight: 600;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
+
+                if flat-idx < root.apps.length: entry-touch := TouchArea {
+                    clicked => { root.launch(root.apps[flat-idx].name); }
+
+                    VerticalLayout {
+                        spacing: 8px;
+                        alignment: center;
+
+                        Rectangle {
+                            width: 56px;
+                            height: 56px;
+                            border-radius: 14px;
+                            background: entry-touch.has-hover ? Theme.color4.with-alpha(0.18) : Theme.color4.with-alpha(0.10);
+                            border-width: 1px;
+                            border-color: Theme.color7.with-alpha(entry-touch.has-hover ? 0.35 : 0.15);
+                            animate background, border-color { duration: 120ms; easing: ease-out; }
+
+                            if root.apps[flat-idx].has-icon: Image {
+                                source: root.apps[flat-idx].icon;
+                                width: 30px;
+                                height: 30px;
+                            }
+                            if !root.apps[flat-idx].has-icon: Text {
+                                text: root.apps[flat-idx].initial;
+                                color: Theme.color4;
+                                font-size: 16px;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
                         }
-                    }
-                    Text {
-                        text: root.apps[flat-idx].name;
-                        color: Theme.color4;
-                        font-size: 11px;
-                        horizontal-alignment: center;
+
+                        Text {
+                            text: root.apps[flat-idx].name;
+                            color: Theme.color4;
+                            font-size: 11px;
+                            horizontal-alignment: center;
+                            overflow: elide;
+                            width: root.cell-w;
+                        }
                     }
                 }
             }
