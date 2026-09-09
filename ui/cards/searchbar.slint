@@ -1,8 +1,8 @@
 import { Theme } from "../theme.slint";
 
 export component SearchBar inherits Rectangle {
-    in property <string> placeholder-text: "Search apps files settings...";
-    out property <string> text: input.text;
+    in property <string> placeholder-text: "Search...";
+
     callback edited(string);
     callback accepted(string);
     forward-focus: input;
@@ -47,8 +47,8 @@ export component SearchBar inherits Rectangle {
                 font-size: 14px;
                 vertical-alignment: center;
                 single-line: true;
-                edited => { root.edited(root.text); }
-                accepted => { root.accepted(root.text); }
+                edited => { root.edited(input.text); }
+                accepted => { root.accepted(input.text); }
             }
         }
     }

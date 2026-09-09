@@ -29,11 +29,18 @@ impl AppGrid {
     }
 
     pub fn value(&self) -> Value {
+        self.filtered_value("")
+    }
+
+    pub fn filtered_value(&self, query: &str) -> Value {
+        let q = query.trim().to_lowercase();
+
         let mut names: Vec<&String> = self.apps.keys().collect();
-        names.sort_by_key(|n| n.to_lowercase());
+        names.sort_by_key(|name| name.to_lowercase());
 
         let items: Vec<Value> = names
             .into_iter()
+            .filter(|name| q.is_empty() || name.to_lowercase().contains(&q))
             .map(|name| {
                 let app = &self.apps[name];
 
@@ -82,7 +89,11 @@ impl AppGrid {
 }
 
 pub fn push_apps_state(instance: &ComponentInstance, grid: &AppGrid) {
-    let value = grid.value();
+    push_filtered_apps_state(instance, grid, "");
+}
+
+pub fn push_filtered_apps_state(instance: &ComponentInstance, grid: &AppGrid, query: &str) {
+    let value = grid.filtered_value(query);
 
     match instance.set_property("apps", value) {
         Ok(_) => {
@@ -105,7 +116,6 @@ fn desktop_dirs() -> Vec<PathBuf> {
         let home = PathBuf::from(home);
 
         dirs.push(home.join(".local/share/applications"));
-
         dirs.push(home.join(".local/share/flatpak/exports/share/applications"));
     }
 
@@ -116,11 +126,9 @@ fn parse_desktop_entry(path: &Path) -> Option<DesktopApp> {
     let content = fs::read_to_string(path).ok()?;
 
     let mut in_entry_section = false;
-
     let mut name = None;
     let mut exec = None;
     let mut icon = None;
-
     let mut no_display = false;
     let mut is_application = true;
 
@@ -217,12 +225,10 @@ fn icon_search_roots() -> Vec<PathBuf> {
         let home = PathBuf::from(home);
 
         roots.push(home.join(".local/share/icons"));
-
         roots.push(home.join(".icons"));
     }
 
     roots.push(PathBuf::from("/usr/share/icons"));
-
     roots.push(PathBuf::from("/usr/local/share/icons"));
 
     roots

@@ -21,8 +21,8 @@ use std::thread;
 use std::time::Duration;
 
 const ISLAND: &str = "Island";
-const SHOWN_WIDTH: u32 = 420;
-const SHOWN_HEIGHT: u32 = 630;
+const SHOWN_WIDTH: u32 = 450;
+const SHOWN_HEIGHT: u32 = 650;
 
 pub enum DaemonMsg {
     ReloadTheme,
@@ -238,8 +238,6 @@ fn main() -> layer_shika::Result<()> {
 
             push_apps_state(instance, &app_grid);
 
-            cards::appgrid::push_apps_state(instance, &app_grid_init);
-
             let _ = instance.set_property("current-time", Value::String(time_str.clone().into()));
 
             let _ = instance.set_property("current-date", Value::String(date_str.clone().into()));
@@ -346,7 +344,14 @@ fn main() -> layer_shika::Result<()> {
                 Value::Void
             });
 
-            cards::searchbar::wire_search_callbacks(instance, |_text| {}, |_text| {});
+            let app_grid_filter = app_grid_init.clone();
+            let weak_search = instance.as_weak();
+
+            cards::searchbar::wire_search_callbacks(instance, move |text| {
+                if let Some(inst) = weak_search.upgrade() {
+                    cards::appgrid::push_filtered_apps_state(&inst, &app_grid_filter, &text);
+                }
+            }, |_text| {});
         });
     }
 

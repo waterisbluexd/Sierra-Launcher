@@ -42,12 +42,18 @@ export component TopSection inherits Rectangle {
     callback select-next();
     callback search-edited(string);
     callback search-accepted(string);
-    callback focus-search();
     callback launch-app(string);
     callback show-all-apps();
 
+    callback focus-search();
+    callback focus-appgrid();
+
     focus-search => {
         search-bar.focus();
+    }
+
+    focus-appgrid => {
+        app-grid.focus-appgrid();
     }
 
     carousel := WallpaperCarousel {
@@ -79,7 +85,7 @@ export component TopSection inherits Rectangle {
     VerticalLayout {
         y: 0px;
         width: parent.width;
-        padding-top: 25px;
+        padding-top: 15px;
         padding-bottom: -20px;
         spacing: 0px;
 
@@ -139,11 +145,10 @@ export component TopSection inherits Rectangle {
             width: parent.width;
             padding-left: 20px;
             padding-right: 20px;
-            padding-top: 10px;
+            padding-top: 15px;
             spacing: 0px;
 
-            AppGrid {
-                width: parent.width;
+            app-grid := AppGrid {
                 apps: root.apps;
 
                 launch(name) => {

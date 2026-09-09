@@ -6,8 +6,8 @@ import { AppGrid, AppEntry } from "cards/appgrid.slint";
 export { AppEntry }
 
 export component Island inherits Window {
-    width: 420px;
-    height: 630px;
+    width: 450px;
+    height: 650px;
 
     background: transparent;
 
@@ -46,7 +46,10 @@ export component Island inherits Window {
     callback search_accepted(string);
 
     callback launch-app(string);
+    callback show-all-apps();
+
     callback focus_search();
+    callback focus_appgrid();
 
     forward-focus: scope;
 
@@ -92,16 +95,6 @@ export component Island inherits Window {
                     rgba(0, 0, 0, 0.9) 100%
                 );
             }
-            // Rectangle {                              //Could use this later in testing but above is better
-            //     width: parent.width;
-            //     height: parent.height;
-
-            //     background: @linear-gradient(
-            //         180deg,
-            //         rgba(0, 0, 0, 0) 0%,
-            //         rgba(0, 0, 0, 0.9) 100%
-            //     );
-            // }
 
             HorizontalLayout {
                 padding: 1px;
@@ -137,6 +130,7 @@ export component Island inherits Window {
 
                         temperature: root.temperature;
                         condition: root.condition;
+                        apps: root.apps;
 
                         select-prev => {
                             root.request_select_prev();
@@ -153,6 +147,14 @@ export component Island inherits Window {
                         search-accepted(t) => {
                             root.search_accepted(t);
                         }
+
+                        launch-app(name) => {
+                            root.launch-app(name);
+                        }
+
+                        show-all-apps => {
+                            root.show-all-apps();
+                        }
                     }
                 }
             }
@@ -161,6 +163,10 @@ export component Island inherits Window {
 
     focus_search => {
         top-section.focus-search();
+    }
+
+    focus_appgrid => {
+        top-section.focus-appgrid();
     }
 
     init => {
