@@ -86,6 +86,20 @@ impl AppGrid {
             launch_command(&app.exec);
         }
     }
+
+    pub fn launch_first(&self, query: &str) -> bool {
+        let q = query.trim().to_lowercase();
+
+        let mut names: Vec<&String> = self.apps.keys().collect();
+        names.sort_by_key(|name| name.to_lowercase());
+
+        if let Some(name) = names.into_iter().find(|name| q.is_empty() || name.to_lowercase().contains(&q)) {
+            self.launch(name);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 pub fn push_apps_state(instance: &ComponentInstance, grid: &AppGrid) {

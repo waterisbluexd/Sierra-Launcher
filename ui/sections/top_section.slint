@@ -49,7 +49,7 @@ export component TopSection inherits Rectangle {
     callback focus-appgrid();
 
     focus-search => {
-        search-bar.focus();
+        search-bar.focus-input();
     }
 
     focus-appgrid => {
@@ -138,6 +138,10 @@ export component TopSection inherits Rectangle {
                 accepted(t) => {
                     root.search-accepted(t);
                 }
+
+                focus-appgrid() => {
+                    root.focus-appgrid();
+                }
             }
         }
 
@@ -157,6 +161,10 @@ export component TopSection inherits Rectangle {
 
                 show-all() => {
                     root.show-all-apps();
+                }
+
+                focus-search() => {
+                    root.focus-search();
                 }
             }
         }

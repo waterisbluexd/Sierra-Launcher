@@ -15,6 +15,7 @@ export component AppGrid inherits Rectangle {
     callback launch(string);
     callback show-all();
     callback focus-appgrid();
+    callback focus-search();
 
     property <int> selected-index: -1;
 
@@ -80,16 +81,30 @@ export component AppGrid inherits Rectangle {
         height: parent.height;
 
         key-pressed(event) => {
-            if event.text == Key.Return && root.selected-index >= 0 && root.selected-index < root.apps.length {
+            if root.apps.length == 0 {
+                accept
+            }
+
+            if root.selected-index < 0 || root.selected-index >= root.apps.length {
+                root.selected-index = 0;
+            }
+
+            if (event.text == "\u{000D}" || event.text == "\u{000A}") && root.selected-index >= 0 && root.selected-index < root.slot-count && root.selected-index < root.apps.length {
                 root.launch(root.apps[root.selected-index].name);
             } else if event.text == Key.LeftArrow && root.selected-index > 0 {
                 root.selected-index = root.selected-index - 1;
-            } else if event.text == Key.RightArrow && root.selected-index < root.apps.length - 1 {
+            } else if event.text == Key.RightArrow && root.selected-index < Math.min(root.slot-count, root.apps.length) - 1 {
                 root.selected-index = root.selected-index + 1;
-            } else if event.text == Key.UpArrow && root.selected-index >= root.columns {
-                root.selected-index = root.selected-index - root.columns;
-            } else if event.text == Key.DownArrow && root.selected-index + root.columns < root.apps.length {
+            } else if event.text == Key.UpArrow {
+                if root.selected-index >= root.columns {
+                    root.selected-index = root.selected-index - root.columns;
+                } else {
+                    root.focus-search();
+                }
+            } else if event.text == Key.DownArrow && root.selected-index + root.columns < Math.min(root.slot-count, root.apps.length) {
                 root.selected-index = root.selected-index + root.columns;
+            } else if event.text != "" && event.text != Key.LeftArrow && event.text != Key.RightArrow && event.text != Key.UpArrow && event.text != Key.DownArrow && event.text != Key.Return && event.text != Key.Escape && event.text != Key.Tab {
+                root.focus-search();
             }
 
             accept
@@ -116,20 +131,13 @@ export component AppGrid inherits Rectangle {
                 width: root.tile-width;
                 height: root.tile-height;
 
-                border-width: root.selected-index == index ? 2px : 0px;
-                border-color: Theme.color4;
-
-                background: tile-touch.has-hover
+                background: root.selected-index == index || tile-touch.has-hover
                     ? Theme.color4.with-alpha(0.10)
                     : transparent;
 
                 animate background {
                     duration: 150ms;
                     easing: ease-out;
-                }
-
-                animate border-width {
-                    duration: 120ms;
                 }
 
                 tile-touch := TouchArea {

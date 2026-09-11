@@ -1,5 +1,6 @@
 mod cards;
 mod ipc;
+mod logic;
 mod theme;
 mod themer;
 mod ui;
@@ -11,7 +12,7 @@ use layer_shika::calloop::{TimeoutAction, Timer};
 use layer_shika::prelude::*;
 use layer_shika::slint_interpreter::Value;
 use layer_shika_adapters::AppState;
-use slint::ComponentHandle;
+use logic::keyboard::{schedule_initial_focus, wire_keyboard_callbacks};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -21,7 +22,7 @@ use std::thread;
 use std::time::Duration;
 
 const ISLAND: &str = "Island";
-const SHOWN_WIDTH: u32 = 450;
+const SHOWN_WIDTH: u32 = 420;
 const SHOWN_HEIGHT: u32 = 650;
 
 pub enum DaemonMsg {
@@ -269,15 +270,13 @@ fn main() -> layer_shika::Result<()> {
 
             drop(init_state);
 
-            let app_grid_launch = app_grid_init.clone();
-
-            let _ = instance.set_callback("launch-app", move |args: &[Value]| {
-                if let Some(Value::String(name)) = args.first() {
-                    app_grid_launch.launch(name);
-                }
-
-                Value::Void
-            });
+            wire_keyboard_callbacks(
+                instance,
+                &manager_init,
+                esc_sender.clone(),
+                commit_gen_inner.clone(),
+                app_grid_init.clone(),
+            );
 
             {
                 let sender_inner = esc_sender.clone();
@@ -286,95 +285,10 @@ fn main() -> layer_shika::Result<()> {
                     let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
                 });
             }
-
-            let weak_prev = instance.as_weak();
-            let manager_prev = manager_init.clone();
-            let sender_prev = esc_sender.clone();
-            let commit_gen_prev = commit_gen_inner.clone();
-
-            let _ = instance.set_callback("request_select_prev", move |_args: &[Value]| {
-                manager_prev.borrow_mut().select_prev();
-
-                if let Some(inst) = weak_prev.upgrade() {
-                    ui::push_wallpaper_state(&inst, &manager_prev.borrow());
-                }
-
-                {
-                    let sender_inner = sender_prev.clone();
-
-                    ui::kick_loads(&manager_prev, move || {
-                        let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
-                    });
-                }
-
-                ui::schedule_commit(&commit_gen_prev, &sender_prev);
-
-                Value::Void
-            });
-
-            let weak_next = instance.as_weak();
-            let manager_next = manager_init.clone();
-            let sender_next = esc_sender.clone();
-            let commit_gen_next = commit_gen_inner.clone();
-
-            let _ = instance.set_callback("request_select_next", move |_args: &[Value]| {
-                manager_next.borrow_mut().select_next();
-
-                if let Some(inst) = weak_next.upgrade() {
-                    ui::push_wallpaper_state(&inst, &manager_next.borrow());
-                }
-
-                {
-                    let sender_inner = sender_next.clone();
-
-                    ui::kick_loads(&manager_next, move || {
-                        let _ = sender_inner.send(DaemonMsg::WallpaperLoaded);
-                    });
-                }
-
-                ui::schedule_commit(&commit_gen_next, &sender_next);
-
-                Value::Void
-            });
-
-            let inner_sender = esc_sender.clone();
-
-            let _ = instance.set_callback("request_hide", move |_args: &[Value]| {
-                let _ = inner_sender.send(DaemonMsg::Toggle);
-                Value::Void
-            });
-
-            let app_grid_filter = app_grid_init.clone();
-            let weak_search = instance.as_weak();
-
-            cards::searchbar::wire_search_callbacks(instance, move |text| {
-                if let Some(inst) = weak_search.upgrade() {
-                    cards::appgrid::push_filtered_apps_state(&inst, &app_grid_filter, &text);
-                }
-            }, |_text| {});
         });
     }
 
-    {
-        shell
-            .event_loop_handle()
-            .insert_source(
-                Timer::from_duration(Duration::from_millis(50)),
-                move |_deadline, _metadata, app_state: &mut AppState| {
-                    for surface in app_state.surfaces_by_name_mut(ISLAND) {
-                        let _ = surface.component_instance().invoke("focus_search", &[]);
-                    }
-
-                    for surface in app_state.all_outputs() {
-                        let _ = surface.render_frame_if_dirty();
-                        surface.commit_surface();
-                    }
-
-                    TimeoutAction::Drop
-                },
-            )
-            .expect("Failed to insert focus timer");
-    }
+    schedule_initial_focus(&mut shell);
 
     {
         let sender = sender.clone();

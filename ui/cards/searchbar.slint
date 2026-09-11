@@ -5,6 +5,8 @@ export component SearchBar inherits Rectangle {
 
     callback edited(string);
     callback accepted(string);
+    callback focus-appgrid();
+    callback focus-input();
     forward-focus: input;
 
     height: 36px;
@@ -30,6 +32,7 @@ export component SearchBar inherits Rectangle {
         Rectangle {
             width: 100%;
             height: 100%;
+
             Text {
                 text: root.placeholder-text;
                 font-family: "Monocraft";
@@ -49,7 +52,21 @@ export component SearchBar inherits Rectangle {
                 single-line: true;
                 edited => { root.edited(input.text); }
                 accepted => { root.accepted(input.text); }
+                key-pressed(event) => {
+                    if event.text == Key.DownArrow {
+                        root.focus-appgrid();
+                        accept
+                    } else if event.text == Key.Return || event.text == "\u{000D}" || event.text == "\u{000A}" {
+                        root.accepted(input.text);
+                        accept
+                    }
+                    reject
+                }
             }
         }
+    }
+
+    focus-input() => {
+        input.focus();
     }
 }
